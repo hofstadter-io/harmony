@@ -98,7 +98,7 @@ Harmony: {
   // to get action list for use in scripts
   // see run.py for an example
   csv: cuecsv.Encode(list.FlattenN([
-    for name, reg in registry.Registry {
+    for name, reg in registry {
       [ for key, case in reg.cases { [name, key] } ]
     }
   ], 1))

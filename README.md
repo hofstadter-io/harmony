@@ -1,4 +1,4 @@
-# dagger-unity
+# harmony 
 
 `harmony` is a framework for
 testing a suite of repositories
@@ -11,41 +11,113 @@ to setup and register projects for usage in upstream testing.
 
 Built on [Dagger](https://dagger.io), `harmony` provides
 
-- single-file setup for developers
-- simple registrations for users
+- simple setup for developers
+- simple registration for user projects
 - support for any languages or tools 
 - consistent environment for testing
 - simplified version injection
+- easily run specific or all cases
 
-_Note, while `harmony` uses Dagger, this is not required downstream projects._
+_Note, while `harmony` uses Dagger, dagger is not required downstream projects._
 
+#### Examples
+
+- [harmony-cue](https://github.com/hofstadter-io/harmony-cue) for testing CUE base projects
 
 ## Harmony Setup
 
 To setup `harmony`, add the following file to your project.
 
 ```cue
+package main
+
+import (
+  "dagger.io/dagger"
+  "universe.dagger.io/docker"
+
+  "github.com/hofstadter-io/harmony"
+
+  // import your projects registry
+  "github.com/username/project/registry"
+)
+
+// A dagger plan is used as the driver for testing
+dagger.#Plan
+
+// add actions from Harmony
+actions: harmony.Harmony
+
+// project specific actions & configuration
+actions: {
+
+  // global version config for this harmony
+  versions: {
+    go: "1.18"
+  }
+
+  // the registry of downstream projects
+  // typically we put this in a subdir and import it
+  "registry": registry.Registry
+
+  // the image test cases are run in
+  // typically parametrized so we can change dependencies or versions 
+  runner: docker.#Pull & {
+    source: "index.docker.io/golang:\(versions.go)-alpine"
+  }
+
+  // where downstream project code is checked out
+  workdir: "/work" 
+}
 ```
-
-## Registration Setup
-
-There are two parts to registration
-
-1. Add your project to the upstream `harmony` registry
-2. Add your Registration definition to your own project
-
-```cue
-```
-
-
-To add a new registration, add a file to `registry` like `self.cue`:
-
-(and [open a pull request](https://github.com/hofstadter-io/dagger-unity/pulls))
 
 Run registration cases or a single case with dagger: `dagger do <reg> [case]`.
+Any cases found will be run in parallel.
 
 Use `./run.py` to run the full suite of registrations and cases sequentially,
 or as a convenient way to set dependency versions.
+
+#### Registry
+
+You will typically want to provide a subdirectory
+for registered projects. You can also provide
+short codes to simplify user project registration further.
+
+Here we add a `_dagger` short code:
+
+```cue
+package registry
+
+import (
+  "strings"
+
+  "universe.dagger.io/docker"
+  "github.com/hofstadter-io/harmony"
+)
+
+#Registration: R=(harmony.Registration & {
+  // add our short codes 
+  cases: [string]: docker.#Run & {
+    _dagger?: string
+    if _dagger != _|_ {
+      command: {
+        name: "bash"
+        args: ["-c", _script]
+        _script: """
+        dagger version
+        dagger project update
+        dagger do \(_dagger) --with 'actions: versions: cue: "\(R.versions.cue)"'
+        """ 
+      }
+    }
+  }
+}
+```
+
+
+## Registration Setup
+
+To add a new registration for user projects,
+add a CUE file to the upstream project.
 
 ```cue
 package registry
@@ -53,74 +125,22 @@ package registry
 // Note the 'Registry: <name>: ...` needs to be unique
 Registry: self: #Registration & {
   // 
-  remote: "github.com/hofstadter-io/dagger-unity"
+  remote: "github.com/hofstadter-io/hof"
   ref: "main"
 
   cases: {
-    // run any cue command
-    cue:    { _cue: ["eval", "in.cue"], workdir: "/work/examples/cue" }
-    // run a Go program, cue version assigned
-    goapi:  { _goapi: "go run main.go", workdir: "/work/examples/go" }
-    // run dagger, so pretty much anything
-    dagger: { _dagger: "run", workdir: "/work/examples/dagger" }
-    // run globs of testscript txtar files
-    txtar:  { _testscript: "*.txt", workdir: "/work/examples/txtar" }
-    // run arbitrary scripts in the testing container with available commands
-    script: {
-      workdir: "/work/examples/script"
-      _script: """
-      #!/usr/bin/env bash
-      set -euo pipefail
-
-      echo "a bash script"
-      pwd
-      ls
-      ./run.sh
-      """
+    // these are docker.#Run from Dagger universe
+    cli: { 
+      workdir: "/work"
+      command: {
+        name: "go"
+        args: ["build", "./cmd/hof"]
     }
-  }
-}
-```
-
-You can create your own private registries and include private repositories
-by using the `#Unity` from the testers. This is how this repository works.
-
-```cue
-// from dagger.cue
-// ...
-
-dagger.#Plan
-
-client: network: "unix:///var/run/docker.sock": connect: dagger.#Socket
-
-actions: {
-  // versions which will be injected 
-  versions: {
-    cue:    string | *"v0.4.3-beta.2"
-    dagger: string | *"v0.2.4"
-    go:     string | *"1.18"
-  }
-
-  // the image tests should run in
-  runner: base.Image & {
-    "versions": versions
-  }
-
-  // dagger actions injected from registry
-  testers.#Unity & {
-    // required fields
-    "runner": runner
-    "registry": registry.Registry
-    // extra information to inject
-    extra: reg: "versions": versions
-    extra: run: {
-      mounts: {
-        // for dagger-in-dagger
-        docker: {
-          contents: client.network."unix:///var/run/docker.sock".connect
-          dest:     "/var/run/docker.sock"
-        }
-      }
+    flow: { 
+      workdir: "/work"
+      command: {
+        name: "go"
+        args: ["test", "./flow"]
     }
   }
 }
@@ -129,22 +149,13 @@ actions: {
 ---
 
 `harmony` was inspired by the idea
-of merging Dagger and [cue-unity](https://github.com/cue-unity/unity),
-where the goal is to collect community projects
+of build a [cue-unity](https://github.com/cue-unity/unity)
+powered by [Dagger](https://dagger.io).
+The goal of `cue-unity` is to collect community projects
 and run them against new CUE language changes.
+`cue-unity` was itself inspired by some work
+done by Rob Pike for Go, for the same purpose
+of testing downstream projects using Go.
 
-Todo:
-
-- rename to `harmony`
-- move more to users' repos
-  - reg is repo/ref/path
-  - cases in target repo
-  - make it easy to use / test locally in target repo
-- make reuse easier
-  - move #Unity up a dir
-  - unity plan so users can test locally
-  - import #Registration
-  - make shorts not hidden
-- add more CUE projects
-- create hof "Harmony"
-
+`harmony` has since been generalized and
+the CUE specific version is [harmony-cue](https://github.com/hofstadter-io/harmony-cue).
