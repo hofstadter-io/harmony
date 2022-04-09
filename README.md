@@ -82,7 +82,8 @@ You will typically want to provide a subdirectory
 for registered projects. You can also provide
 short codes to simplify user project registration further.
 
-Here we add a `_dagger` short code:
+Here we add a `_dagger` short code by
+including a `schema.cue` in our `registry/` directory.
 
 ```cue
 package registry
@@ -94,7 +95,8 @@ import (
   "github.com/hofstadter-io/harmony"
 )
 
-#Registration: R=(harmony.Registration & {
+// customized schema built on harmony's
+Registration: R=(harmony.Registration & {
   // add our short codes 
   cases: [string]: docker.#Run & {
     _dagger?: string
@@ -105,13 +107,15 @@ import (
         _script: """
         dagger version
         dagger project update
-        dagger do \(_dagger) --with 'actions: versions: cue: "\(R.versions.cue)"'
+        dagger do \(_dagger)
         """ 
       }
     }
   }
 }
 ```
+
+Registrations then  `case: foo: { _dagger: "foo bar", workdir: "/work" }`
 
 
 ## Registration Setup
@@ -123,7 +127,7 @@ add a CUE file to the upstream project.
 package registry
 
 // Note the 'Registry: <name>: ...` needs to be unique
-Registry: self: #Registration & {
+Registry: hof: Registration & {
   // 
   remote: "github.com/hofstadter-io/hof"
   ref: "main"
@@ -149,13 +153,13 @@ Registry: self: #Registration & {
 ---
 
 `harmony` was inspired by the idea
-of build a [cue-unity](https://github.com/cue-unity/unity)
+of creating a [cue-unity](https://github.com/cue-unity/unity)
 powered by [Dagger](https://dagger.io).
 The goal of `cue-unity` is to collect community projects
 and run them against new CUE language changes.
 `cue-unity` was itself inspired by some work
-done by Rob Pike for Go, for the same purpose
-of testing downstream projects using Go.
+Rob Pike did on Go, for the same purpose
+of testing downstream projects using Go's stdlib.
 
-`harmony` has since been generalized and
+`harmony` is more generalized and
 the CUE specific version is [harmony-cue](https://github.com/hofstadter-io/harmony-cue).
