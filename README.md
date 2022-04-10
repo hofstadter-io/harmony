@@ -61,6 +61,7 @@ actions: {
 
   // the image test cases are run in
   // typically parametrized so we can change dependencies or versions 
+  // (you can also build any image you want here)
   runner: docker.#Pull & {
     source: "index.docker.io/golang:\(versions.go)-alpine"
   }
@@ -149,6 +150,26 @@ Registry: hof: Registration & {
   }
 }
 ```
+
+## Base image using dirty code
+
+As a developer of a project,
+you may wish to run harmony
+before committing your code.
+To do this, we need to
+
+- mount the local directory into dagger
+- build a runner image from the local code
+- mount the local directory into the runner (possibly)
+
+Refer to [harmony-cue](https://github.com/hofstadter-io/harmony-cue) for an example.
+Look at how "local" is used:
+
+- harmony.cue
+- testers/image.cue
+- run.py
+
+The essence is to use CUE guards (if statements)
 
 ---
 

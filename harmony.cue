@@ -72,6 +72,8 @@ Harmony: {
       // run a container for each case
       for key, case in _reg.cases {
         (key): docker.#Run & {
+          always: true
+
           // setup base
           let R = runner
           input: R
