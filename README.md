@@ -18,7 +18,7 @@ Built on [Dagger](https://dagger.io), `harmony` provides
 - simplified version injection
 - easily run specific or all cases
 
-_Note, while `harmony` uses Dagger, dagger is not required downstream projects._
+_Note, while `harmony` uses Dagger, it is not required for downstream projects._
 
 #### Examples
 
@@ -95,8 +95,8 @@ import (
   "github.com/hofstadter-io/harmony"
 )
 
-// customized schema built on harmony's
-Registration: R=(harmony.Registration & {
+// customized Registration schema built on harmony's
+Registration: harmony.Registration & {
   // add our short codes 
   cases: [string]: docker.#Run & {
     _dagger?: string
@@ -115,7 +115,7 @@ Registration: R=(harmony.Registration & {
 }
 ```
 
-Registrations then  `case: foo: { _dagger: "foo bar", workdir: "/work" }`
+Registrations then use with `cases: foo: { _dagger: "foo bar", workdir: "/work" }`
 
 
 ## Registration Setup
