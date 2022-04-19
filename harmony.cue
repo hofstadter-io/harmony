@@ -16,9 +16,6 @@ Registration: {
   // git ref to checkout
   ref: string
 
-  // path to the registration
-  path: string
-
   // testing cases
   cases: [string]: docker.#Run
   // often you will provide some short codes
